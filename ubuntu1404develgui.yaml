@@ -1,5 +1,6 @@
 #cloud-config
 
+apt_update: true
 package_upgrade: true
 
 packages:
