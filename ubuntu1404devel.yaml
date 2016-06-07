@@ -1,0 +1,28 @@
+#cloud-config
+
+package_upgrade: true
+
+packages:
+  - qemu-guest-agent
+  - autoconf
+  - automake
+  - autotools-dev
+  - fail2ban
+  - isc-dhcp-server
+  - libfam0
+  - libjs-jquery
+  - libopts25:amd64
+  - libprotobuf8:amd64
+  - libutempter0
+  - m4
+  - mosh
+  - ntp
+  - python-httplib2
+  - python-ldap
+  - python-pyinotify
+  - python-simplejson
+  - python-software-properties
+  - tcsh
+  - whois
+  - zsh
+  - zsh-common
