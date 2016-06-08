@@ -1,0 +1,316 @@
+#cloud-config
+
+package_upgrade: true
+
+write_files:
+-   content: |
+        #!/bin/bash
+        #
+        # CH irods init script for Jetstream -> Wrangler
+        #
+        # Script to create initial irods_environment.json file based on:
+        # 	- Wrangler username
+        #	- Location of iRODS service (IU or TACC)
+        #
+        # If it already exists, ask about clobbering it. Also, remind about iinit if we
+        # are putting it directly into place.
+        #
+        #12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+        echo "**************************"
+        echo "  Wrangler iRODS Access"
+        echo "**************************"
+        echo " "
+        echo "This script will set up your irods_environment.json file with the defaults"
+        echo "needed to access the Wrangler iRODS system."
+        echo " "
+        echo "This file is typically kept in a '.irods' directory in your home directory."
+        echo " "
+        PASSED=0
+        while [[ $PASSED == 0 ]]; do
+            echo -n "What is your Wrangler username? : "
+            read wrangUser
+
+            if [[ ! $wrangUser ]]; then
+                echo "You must specify a user name."
+            else
+                PASSED=1
+            fi
+        done
+
+        PASSED=0
+        while [[ $PASSED == 0 ]]; do
+            echo -n "Do you wish to connect to IU iRODS or TACC iRODS? (i/t): "
+            read irodsSelection
+
+            if [[ "$irodsSelection" == "i" ]] || [[ "$irodsSelection" == "I" ]]; then
+                TEMPLATE="I"
+                PASSED=1
+            elif [[ "$irodsSelection" == "t" ]] || [[ "$irodsSelection" == "T" ]]; then
+                TEMPLATE="T"
+                PASSED=1
+            else
+                echo "You must choose either the IU or the TACC iRODS instance."
+            fi
+        done
+
+        PASSED=0
+        INITREADY=0
+        while [[ $PASSED == 0 ]]; do
+            if [[ -f ${HOME}/.irods/irods_environment.json ]]; then
+                echo -n "Replace existing ~/.irods/irods_environment.json? (y/n): "
+                read replaceIRODS
+
+                if [[ "$replaceIRODS" == "y" ]] || [[ "$replaceIRODS" == "Y" ]]; then
+                    TARGETFILE=${HOME}/.irods/irods_environment.json
+                    INITREADY=1
+                    PASSED=1
+                elif [[ "$replaceIRODS" == "n" ]] || [[ "$replaceIRODS" == "N" ]]; then
+                    TARGETFILE=${HOME}/.irods/irods_environment.new
+                    PASSED=1
+                    echo "New configuration will be saved as ~/.irods/irods_environment.new"
+                else
+                    echo "You must choose whether to replace any existing irods environment file."
+                fi
+            else
+               mkdir -p $HOME/.irods
+               INITREADY=1
+               PASSED=1
+               TARGETFILE="${HOME}/.irods/irods_environment.json"
+            fi
+        done
+
+        if [[ $TEMPLATE == "I" ]]; then
+            cat /usr/local/etc/irods_environment.template.iu | sed -e "s/USERNAME/$wrangUser/" > $TARGETFILE
+        elif [[ $TEMPLATE == "T" ]]; then
+            cat /usr/local/etc/irods_environment.template.tacc | sed -e "s/USERNAME/$wrangUser/" > $TARGETFILE
+        else
+            echo "Could not locate template type, please report this error!"
+            exit 1
+        fi
+
+        echo " "
+        echo "Created file $TARGETFILE with default iRODS configuration."
+
+        if [[ $INITREADY == 1 ]]; then
+            echo " "
+            echo "Use 'iinit' to initialize a session as user $wrangUser and enter your TACC password when prompted."
+        fi
+
+        exit 0
+    path: /usr/local/bin/isetup
+    permissions: '0555'
+-   content: |
+        {
+            "irods_host": "iuwrang-xfer4.uits.indiana.edu",
+            "irods_port": 1247,
+            "irods_authentication_scheme": "PAM",
+            "irods_ssl_verify_server": "cert",
+            "irods_log_level": "DEBUG",
+            "irods_default_resource": "iuwrangler",
+            "irods_home": "/iuWranglerZ/home/USERNAME",
+            "irods_cwd": "/iuWranglerZ/home/USERNAME",
+            "irods_user_name": "USERNAME",
+            "irods_zone_name": "iuWranglerZ",
+            "irods_client_server_negotiation": "request_server_negotiation",
+            "irods_client_server_policy": "CS_NEG_REFUSE",
+            "irods_ssl_ca_certificate_path": "/etc/pki/tls/certs/",
+            "irods_ssl_ca_certificate_file": "/etc/pki/tls/certs/ca-bundle.crt",
+            "irods_encryption_key_size": 32,
+            "irods_encryption_salt_size": 8,
+            "irods_encryption_num_hash_rounds": 16,
+            "irods_encryption_algorithm": "AES-256-CBC",
+            "irods_default_hash_scheme": "SHA256",
+            "irods_match_hash_policy": "compatible",
+            "irods_maximum_size_for_single_buffer_in_megabytes": 32,
+            "irods_default_number_of_transfer_threads": 4,
+            "irods_transfer_buffer_size_for_parallel_transfer_in_megabytes": 4
+        }    
+    path: /usr/local/etc/irods_environment.template.iu
+    permissions: '0644'
+-   content: |
+        {
+            "irods_host": "irods.wrangler.tacc.utexas.edu",
+            "irods_port": 1247,
+            "irods_authentication_scheme": "PAM",
+            "irods_ssl_verify_server": "none",
+            "irods_log_level": "DEBUG",
+            "irods_default_resource": "main-data",
+            "irods_home": "/taccWranglerZ/home/USERNAME",
+            "irods_cwd": "/taccWranglerZ/home/USERNAME",
+            "irods_user_name": "USERNAME",
+            "irods_zone_name": "taccWranglerZ",
+            "irods_client_server_negotiation": "request_server_negotiation",
+            "irods_client_server_policy": "CS_NEG_REQUIRE",
+            "irods_encryption_key_size": 32,
+            "irods_encryption_salt_size": 8,
+            "irods_encryption_num_hash_rounds": 16,
+            "irods_encryption_algorithm": "AES-256-CBC",
+            "irods_default_hash_scheme": "SHA256",
+            "irods_match_hash_policy": "compatible",
+            "irods_maximum_size_for_single_buffer_in_megabytes": 32,
+            "irods_default_number_of_transfer_threads": 4,
+            "irods_transfer_buffer_size_for_parallel_transfer_in_megabytes": 4
+        }
+    path: /usr/local/etc/irods_environment.template.tacc
+    permissions: '0644'
+packages:
+  - MAKEDEV
+  - PyYAML
+  - alsa-lib
+  - apr
+  - apr-util
+  - atk
+  - autoconf
+  - automake
+  - avahi-libs
+  - bind-libs
+  - bind-utils
+  - bison
+  - byacc
+  - cairo
+  - cloog-ppl
+  - cloud-utils
+  - cloud-utils-growpart
+  - cpp
+  - cscope
+  - ctags
+  - cups-libs
+  - cvs
+  - dhcp
+  - diffstat
+  - doxygen
+  - ed
+  - elfutils
+  - epel-release
+  - euca2ools
+  - fail2ban
+  - flex
+  - fontconfig
+  - freetype
+  - fuse
+  - fuse-devel
+  - fuse-libs
+  - gamin-python
+  - gcc
+  - gcc-c++
+  - gcc-gfortran
+  - gdb
+  - gdk-pixbuf2
+  - gettext
+  - gettext-devel
+  - gettext-libs
+  - git
+  - glibc-devel
+  - glibc-headers
+  - glusterfs
+  - glusterfs-api
+  - glusterfs-libs
+  - gnutls
+  - gpg-pubkey
+  - gpg-pubkey
+  - gtk2
+  - hicolor-icon-theme
+  - indent
+  - intltool
+  - ipset
+  - jasper-libs
+  - kernel-devel
+  - kernel-headers
+  - libICE
+  - libSM
+  - libX11
+  - libX11-common
+  - libXau
+  - libXcomposite
+  - libXcursor
+  - libXdamage
+  - libXext
+  - libXfixes
+  - libXft
+  - libXi
+  - libXinerama
+  - libXrandr
+  - libXrender
+  - libXtst
+  - libaio
+  - libart_lgpl
+  - libgcj
+  - libgfortran
+  - libgomp
+  - libjpeg-turbo
+  - libmnl
+  - libpng
+  - libproxy
+  - libproxy-bin
+  - libproxy-python
+  - libstdc++-devel
+  - libthai
+  - libtiff
+  - libtool
+  - libusb1
+  - libxcb
+  - m2crypto
+  - mailcap
+  - mpfr
+  - neon
+  - nspr-devel
+  - nss-devel
+  - nss-softokn-devel
+  - nss-softokn-freebl-devel
+  - nss-util-devel
+  - nss_db
+  - ntp
+  - ntpdate
+  - pakchois
+  - pango
+  - parted
+  - patch
+  - patchutils
+  - perl
+  - perl-Compress-Raw-Zlib
+  - perl-Compress-Zlib
+  - perl-Error
+  - perl-Git
+  - perl-HTML-Parser
+  - perl-HTML-Tagset
+  - perl-IO-Compress-Base
+  - perl-IO-Compress-Zlib
+  - perl-Module-Pluggable
+  - perl-Pod-Escapes
+  - perl-Pod-Simple
+  - perl-URI
+  - perl-XML-Parser
+  - perl-libs
+  - perl-libwww-perl
+  - perl-version
+  - pixman
+  - portreserve
+  - ppl
+  - python-crypto
+  - python-inotify
+  - python-ldap
+  - python-paramiko
+  - python-pyasn1
+  - python-simplejson
+  - python2-boto
+  - python2-rsa
+  - qemu-guest-agent
+  - qemu-img
+  - rcs
+  - redhat-rpm-config
+  - rpm-build
+  - screen
+  - subversion
+  - swig
+  - systemtap
+  - systemtap-client
+  - systemtap-devel
+  - systemtap-runtime
+  - tcsh
+  - unzip
+  - usbredir
+  - yum-utils
+  - zip
+  - zsh
+
