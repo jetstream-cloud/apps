@@ -214,6 +214,7 @@ packages:
   - indent
   - intltool
   - ipset
+  - irods-icommands
   - jasper-libs
   - kernel-devel
   - kernel-headers
@@ -313,4 +314,3 @@ packages:
   - yum-utils
   - zip
   - zsh
-
