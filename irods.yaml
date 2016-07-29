@@ -2,7 +2,14 @@
 
 package_upgrade: true
 
+bootcmd:
+  - yum install -y epel-release
+
+runcmd:
+  - /tmp/linux-rootfs-resize.sh
+
 write_files:
+
 -   content: |
         #!/bin/bash
         #
@@ -154,163 +161,24 @@ write_files:
         }
     path: /usr/local/etc/irods_environment.template.tacc
     permissions: '0644'
+-   path: /tmp/linux-rootfs-resize.sh
+    content: |
+        #! /bin/bash
+        cd /tmp
+        git clone https://github.com/flegmatik/linux-rootfs-resize.git
+        cd linux-rootfs-resize
+        ./install
+    permissions: '0744'
+
 packages:
-  - MAKEDEV
-  - PyYAML
-  - alsa-lib
-  - apr
-  - apr-util
-  - atk
-  - autoconf
-  - automake
-  - avahi-libs
-  - bind-libs
-  - bind-utils
-  - bison
-  - byacc
-  - cairo
-  - cloog-ppl
+  - "@Development Tools"
+  - python-virtualenv
+  - python-pip
+  - cmake
+  - wget
+  - emacs-nox
+  - parted
   - cloud-utils
   - cloud-utils-growpart
-  - cpp
-  - cscope
-  - ctags
-  - cups-libs
-  - cvs
-  - dhcp
-  - diffstat
-  - doxygen
-  - ed
-  - elfutils
-  - epel-release
-  - euca2ools
-  - fail2ban
-  - flex
-  - fontconfig
-  - freetype
-  - fuse
-  - fuse-devel
-  - fuse-libs
-  - gamin-python
-  - gcc
-  - gcc-c++
-  - gcc-gfortran
-  - gdb
-  - gdk-pixbuf2
-  - gettext
-  - gettext-devel
-  - gettext-libs
-  - git
-  - glibc-devel
-  - glibc-headers
-  - glusterfs
-  - glusterfs-api
-  - glusterfs-libs
-  - gnutls
-  - gpg-pubkey
-  - gpg-pubkey
-  - gtk2
-  - hicolor-icon-theme
-  - indent
-  - intltool
-  - ipset
   - irods-icommands
-  - jasper-libs
-  - kernel-devel
-  - kernel-headers
-  - libICE
-  - libSM
-  - libX11
-  - libX11-common
-  - libXau
-  - libXcomposite
-  - libXcursor
-  - libXdamage
-  - libXext
-  - libXfixes
-  - libXft
-  - libXi
-  - libXinerama
-  - libXrandr
-  - libXrender
-  - libXtst
-  - libaio
-  - libart_lgpl
-  - libgcj
-  - libgfortran
-  - libgomp
-  - libjpeg-turbo
-  - libmnl
-  - libpng
-  - libproxy
-  - libproxy-bin
-  - libproxy-python
-  - libstdc++-devel
-  - libthai
-  - libtiff
-  - libtool
-  - libusb1
-  - libxcb
-  - m2crypto
-  - mailcap
-  - mpfr
-  - neon
-  - nspr-devel
-  - nss-devel
-  - nss-softokn-devel
-  - nss-softokn-freebl-devel
-  - nss-util-devel
-  - nss_db
-  - ntp
-  - ntpdate
-  - pakchois
-  - pango
-  - parted
-  - patch
-  - patchutils
-  - perl
-  - perl-Compress-Raw-Zlib
-  - perl-Compress-Zlib
-  - perl-Error
-  - perl-Git
-  - perl-HTML-Parser
-  - perl-HTML-Tagset
-  - perl-IO-Compress-Base
-  - perl-IO-Compress-Zlib
-  - perl-Module-Pluggable
-  - perl-Pod-Escapes
-  - perl-Pod-Simple
-  - perl-URI
-  - perl-XML-Parser
-  - perl-libs
-  - perl-libwww-perl
-  - perl-version
-  - pixman
-  - portreserve
-  - ppl
-  - python-crypto
-  - python-inotify
-  - python-ldap
-  - python-paramiko
-  - python-pyasn1
-  - python-simplejson
-  - python2-boto
-  - python2-rsa
   - qemu-guest-agent
-  - qemu-img
-  - rcs
-  - redhat-rpm-config
-  - rpm-build
-  - screen
-  - subversion
-  - swig
-  - systemtap
-  - systemtap-client
-  - systemtap-devel
-  - systemtap-runtime
-  - tcsh
-  - unzip
-  - usbredir
-  - yum-utils
-  - zip
-  - zsh
