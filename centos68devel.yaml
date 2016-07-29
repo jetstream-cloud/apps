@@ -1,6 +1,7 @@
 #cloud-config
 
 package_upgrade: true
+package_reboot_if_required: true
 
 bootcmd:
   - yum install -y epel-release
@@ -17,6 +18,11 @@ write_files:
 
 runcmd:
   - /tmp/linux-rootfs-resize.sh 
+  - sysctl -w net.core.netdev_max_backlog=300000
+  - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+  - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+  - sysctl -w net.core.wmem_max=16777216
+  - sysctl -w net.core.rmem_max=16777216
 
 packages:
   - "@Development Tools"
@@ -29,4 +35,19 @@ packages:
   - parted
   - cloud-utils
   
+power_state:
+ mode: reboot
+ timeout: 30
+ condition: True
 
+cloud_final_modules:
+ - rightscale_userdata
+ - scripts-per-once
+ - scripts-per-boot
+ - scripts-per-instance
+ - scripts-user
+ - ssh-authkey-fingerprints
+ - keys-to-console
+ - phone-home
+ - final-message
+ - power_state_change
