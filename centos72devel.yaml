@@ -2,6 +2,14 @@
 
 package_upgrade: true
 
+yum_repos:
+  epel:
+    baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+    name: "Extra Packages for Enterprise Linux 7 - $basearch"
+
 runcmd:
   - sysctl -w net.core.netdev_max_backlog=300000
   - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'

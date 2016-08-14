@@ -4,6 +4,12 @@ package_upgrade: false
 package_reboot_if_required: true
 
 yum_repos:
+  epel:
+    baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+    name: "Extra Packages for Enterprise Linux 7 - $basearch"
   Lustreserver:
     baseurl: https://downloads.hpdd.intel.com/public/lustre/latest-feature-release/el7/server/
     gpgcheck: 0
@@ -26,7 +32,6 @@ packages:
 bootcmd:
   ## Turn off SELinux
   - setenforce 0
-  - yum install -y epel-release
 runcmd:
   - yum install -y spl-dkms
   - dkms install -m spl/0.6.5.7 -k 3.10.0-327.3.1.el7_lustre.x86_64

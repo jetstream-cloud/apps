@@ -3,8 +3,13 @@
 package_upgrade: true
 package_reboot_if_required: true
 
-bootcmd:
-  - yum install -y epel-release
+yum_repos:
+  epel:
+    baseurl: "http://ftp.ussg.iu.edu/linux/epel/6/x86_64/"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6"
+    name: "Extra Packages for Enterprise Linux 6 - $basearch"
 
 write_files:
   - path: /tmp/linux-rootfs-resize.sh
