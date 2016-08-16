@@ -85,6 +85,7 @@ resources:
     type: OS::Nova::Server
     properties:
       name: torque_server
+      security_groups: [ default ]
       flavor: { get_param: flavor }
       image: { get_param: image }
       key_name: { get_param: key }
@@ -109,6 +110,7 @@ resources:
       resource_def:
         type: compute.yaml
         properties:
+          name: compute-%index%
           image: { get_param: image }
           flavor: m1.large
           key: { get_param: key }
@@ -116,3 +118,13 @@ resources:
 
   private_network:
     type: network.yaml
+
+  shared_volume:
+    type: OS::Cinder::Volume
+    properties:
+      size: 1024
+  shared_volume_attachment:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: torque_server }
+      volume_id: { get_resource: shared_volume }

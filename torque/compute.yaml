@@ -23,6 +23,11 @@ parameters:
     label: Private network name or ID
     description: Network to attach instance to.
     default: private-net
+  name:
+    type: string
+    label: Instance name
+    description: Name to use for the instance.
+    default: compute
 
 
 resources:
@@ -67,6 +72,7 @@ resources:
   compute:
     type: OS::Nova::Server
     properties:
+      name: { get_param: name }
       flavor: m1.large
       image: { get_param: image }
       key_name: { get_param: key }
