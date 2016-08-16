@@ -1,0 +1,118 @@
+heat_template_version: 2013-05-23
+
+description:
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for compute instance
+    default: "CentOS-7-x86_64-GenericCloud"
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: m1.small
+  key:
+    type: string
+    label: Key name
+    description: Name of key-pair to be used for compute instance
+    default: my_key
+  cluster_size:
+    type: number
+    label: Cluster size
+    description: Number of instances in cluster.
+    default: 4
+
+resources:
+
+  torque_server_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: |
+        #!/bin/bash
+        echo "`ifconfig eth0 |grep "inet " |awk '{ print $2 }'` torque_server torque_server.jetstreamlocal" >> /etc/hosts
+        echo "torque_server.jetstreamlocal" > /etc/torque/server_name
+        create-munge-key
+        systemctl enable munge
+        systemctl start munge
+        systemctl enable trqauthd
+        systemctl enable pbs_server
+
+  torque_server_packages:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        runcmd:
+          - sysctl -w net.core.netdev_max_backlog=300000
+          - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+          - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+          - sysctl -w net.core.wmem_max=16777216
+          - sysctl -w net.core.rmem_max=16777216
+          - mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
+        yum_repos:
+          epel:
+          baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+          enabled: true
+          gpgcheck: true
+          gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+          name: "Extra Packages for Enterprise Linux 7 - $basearch"
+        package_upgrade: true
+        packages:
+          - torque-server
+          - torque-scheduler
+          - torque-client
+          - "@Development Tools"
+          - qemu-guest-agent
+          - python-virtualenv
+          - python-pip
+          - cmake
+          - wget
+          - emacs-nox
+          - parted
+          - cloud-utils
+          - epel-release
+
+  server_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: {get_resource: torque_server_packages}
+      - config: {get_resource: torque_server_script}
+
+  torque_server:
+    type: OS::Nova::Server
+    properties:
+      name: torque_server
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: key }
+      user_data_format: SOFTWARE_CONFIG
+      user_data: {get_resource: server_init}
+      networks:
+        - network: { get_attr: [private_network, name] } 
+  torque_server_public_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: public
+  torque_server_floating_ip_association:
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: torque_server_public_ip }
+      server_id: { get_resource: torque_server }
+
+  compute_cluster:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: cluster_size }
+      resource_def:
+        type: compute.yaml
+        properties:
+          image: { get_param: image }
+          flavor: m1.large
+          key: { get_param: key }
+          private_network: { get_attr: [private_network, name] }
+
+  private_network:
+    type: network.yaml

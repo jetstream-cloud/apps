@@ -1,0 +1,76 @@
+heat_template_version: 2013-05-23
+
+description:
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for compute instance
+    default: "CentOS-7-x86_64-GenericCloud"
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: m1.large
+  key:
+    type: string
+    label: Key name
+    description: Name of key-pair to be used for compute instance
+    default: my_key
+  private_network:
+    type: string
+    label: Private network name or ID
+    description: Network to attach instance to.
+    default: private-net
+
+
+resources:
+  compute_packages:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        runcmd:
+          - sysctl -w net.core.netdev_max_backlog=300000
+          - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+          - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+          - sysctl -w net.core.wmem_max=16777216
+          - sysctl -w net.core.rmem_max=16777216
+          - mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
+        yum_repos:
+          epel:
+          baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+          enabled: true
+          gpgcheck: true
+          gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+          name: "Extra Packages for Enterprise Linux 7 - $basearch"
+        package_upgrade: true
+        packages:
+          - torque-mom
+          - "@Development Tools"
+          - qemu-guest-agent
+          - python-virtualenv
+          - python-pip
+          - cmake
+          - wget
+          - emacs-nox
+          - parted
+          - cloud-utils
+          - epel-release
+
+  compute_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: {get_resource: compute_packages}
+
+  compute:
+    type: OS::Nova::Server
+    properties:
+      flavor: m1.large
+      image: { get_param: image }
+      key_name: { get_param: key }
+      user_data_format: SOFTWARE_CONFIG
+      user_data: {get_resource: compute_init}
+      networks:
+        - network: { get_param: private_network } 
