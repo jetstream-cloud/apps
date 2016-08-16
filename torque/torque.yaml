@@ -51,6 +51,12 @@ resources:
           - sysctl -w net.core.wmem_max=16777216
           - sysctl -w net.core.rmem_max=16777216
           - mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
+          - parted --align optimal -- /dev/sdb mkpart primary xfs 2 -1
+          - mkfs.xfs -K /dev/sdb1
+          - mkdir /N
+          - mount /dev/sdb1 /N
+          - echo '/N     	10.0.0.0/24(rw)' >> /etc/exports
+          - exportfs -va
         yum_repos:
           epel:
             baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
