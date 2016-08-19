@@ -28,27 +28,24 @@ parameters:
     label: Instance name
     description: Name to use for the instance.
     default: compute
-
+  server_ip:
+    type: string
+    label: server ip address
+    description: ip address of the torque server
+    default: 10.0.0.4
 
 resources:
   compute_packages:
     type: OS::Heat::CloudConfig
     properties:
       cloud_config:
-        runcmd:
-          - sysctl -w net.core.netdev_max_backlog=300000
-          - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
-          - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
-          - sysctl -w net.core.wmem_max=16777216
-          - sysctl -w net.core.rmem_max=16777216
-          - mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
         yum_repos:
           epel:
-          baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
-          enabled: true
-          gpgcheck: true
-          gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
-          name: "Extra Packages for Enterprise Linux 7 - $basearch"
+            baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+            enabled: true
+            gpgcheck: true
+            gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+            name: "Extra Packages for Enterprise Linux 7 - $basearch"
         package_upgrade: true
         packages:
           - torque-mom
@@ -63,12 +60,31 @@ resources:
           - cloud-utils
           - epel-release
 
+  compute_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config:
+        str_replace:
+          params:
+            $SERVER_IP: { get_param: server_ip }
+          template: |
+            #! /bin/bash
+            sysctl -w net.core.netdev_max_backlog=300000
+            sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+            sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+            sysctl -w net.core.wmem_max=16777216
+            sysctl -w net.core.rmem_max=16777216
+            mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
+            mkdir /N
+            mount $SERVER_IP:/N /N
+
   compute_init:
     type: OS::Heat::MultipartMime
     properties:
       parts:
         - config: {get_resource: compute_packages}
-
+        - config: {get_resource: compute_script}
   compute:
     type: OS::Nova::Server
     properties:

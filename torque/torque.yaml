@@ -7,7 +7,7 @@ parameters:
     type: string
     label: Image name or ID
     description: Image to be used for compute instance
-    default: "CentOS-7-x86_64-GenericCloud"
+    default: "CentOS-7-x86_64-GenericCloud-1607"
   flavor:
     type: string
     label: Flavor
@@ -39,24 +39,69 @@ resources:
         systemctl start munge
         systemctl enable trqauthd
         systemctl enable pbs_server
+        chmod +x /usr/share/doc/torque-4.2.10/torque.setup
+        sed -i 's/pbs_server -t create/pbs_server -ft create/' /usr/share/doc/torque-4.2.10/torque.setup
+        /usr/share/doc/torque-4.2.10/torque.setup root
+         
+
+  sysctl_10gige_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: |
+        #! /bin/bash
+        sysctl -w net.core.netdev_max_backlog=300000
+        sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+        sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+        sysctl -w net.core.wmem_max=16777216
+        sysctl -w net.core.rmem_max=16777216
+
+  fix_epel_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: |
+        #! /bin/bash
+        mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
+        
+  shared_volume_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: |
+        #! /bin/bash
+        parted /dev/sdb mklabel gpt
+        parted --align optimal -- /dev/sdb mkpart primary xfs 2 -1
+        partprobe /dev/sdb
+        mkfs.xfs -K /dev/sdb1
+        mkdir /N
+        mount /dev/sdb1 /N -o noatime,discard
+        echo '/N 10.0.0.0/24(rw)' >> /etc/exports
+        systemctl enable rpcbind
+        systemctl enable nfs-server
+        systemctl enable nfs-lock
+        systemctl enable nfs-idmap
+        systemctl start rpcbind
+        systemctl start nfs-server
+        systemctl start nfs-lock
+        systemctl start nfs-idmap
+        exportfs -va
+        echo '/dev/sdb1       /N      xfs     noatime,discard,rw      0 0' >> /etc/fstab
+
+  torque_server_signal_script:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config:
+        str_replace:
+          params:
+            $WC_NOTIFY: { get_attr: ['wait_handle', 'curl_cli'] }
+          template: { get_file: notify.sh }
 
   torque_server_packages:
     type: OS::Heat::CloudConfig
     properties:
       cloud_config:
-        runcmd:
-          - sysctl -w net.core.netdev_max_backlog=300000
-          - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
-          - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
-          - sysctl -w net.core.wmem_max=16777216
-          - sysctl -w net.core.rmem_max=16777216
-          - mv /etc/yum.repos.d/epel.repo.rpmnew /etc/yum.repos.d/epel.repo
-          - parted --align optimal -- /dev/sdb mkpart primary xfs 2 -1
-          - mkfs.xfs -K /dev/sdb1
-          - mkdir /N
-          - mount /dev/sdb1 /N
-          - echo '/N     	10.0.0.0/24(rw)' >> /etc/exports
-          - exportfs -va
         yum_repos:
           epel:
             baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
@@ -86,7 +131,21 @@ resources:
       parts:
       - config: {get_resource: torque_server_packages}
       - config: {get_resource: torque_server_script}
+      - config: {get_resource: fix_epel_script}
+      - config: {get_resource: sysctl_10gige_script}
+      - config: {get_resource: shared_volume_script}
+      - config: {get_resource: torque_server_signal_script}
+      
+  wait_condition:
+    type: OS::Heat::WaitCondition
+    properties:
+      handle: { get_resource: wait_handle }
+      count: 1
+      timeout: 600
 
+  wait_handle:
+    type: OS::Heat::WaitConditionHandle
+ 
   torque_server:
     type: OS::Nova::Server
     properties:
@@ -111,6 +170,7 @@ resources:
 
   compute_cluster:
     type: OS::Heat::ResourceGroup
+    depends_on: wait_condition
     properties:
       count: { get_param: cluster_size }
       resource_def:
@@ -121,6 +181,7 @@ resources:
           flavor: m1.large
           key: { get_param: key }
           private_network: { get_attr: [private_network, name] }
+          server_ip: 10.0.0.4
 
   private_network:
     type: network.yaml
@@ -134,3 +195,7 @@ resources:
     properties:
       instance_uuid: { get_resource: torque_server }
       volume_id: { get_resource: shared_volume }
+
+outputs:
+  server_ip:
+    value: { get_attr: [torque_server, first_address] }
