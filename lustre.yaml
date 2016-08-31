@@ -1,0 +1,62 @@
+#cloud-config
+debug: True
+package_upgrade: false 
+package_reboot_if_required: true
+
+yum_repos:
+  epel:
+    baseurl: "http://ftp.ussg.iu.edu/linux/epel/7/x86_64/"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
+    name: "Extra Packages for Enterprise Linux 7 - $basearch"
+  Lustreserver:
+    baseurl: https://downloads.hpdd.intel.com/public/lustre/latest-feature-release/el7/server/
+    gpgcheck: 0
+    name: CentOS-$releasever - Lustre
+  e2fsprogs:
+    baseurl: https://downloads.hpdd.intel.com/public/e2fsprogs/latest/el7/
+    name: e2fsprogs
+    gpgcheck: 0
+
+packages:
+  - kernel-devel
+  - http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
+  - dkms
+  - lustre-tests 
+  - lustre-osd-ldiskfs 
+  - lustre-osd-ldiskfs-mount
+  - https://downloads.hpdd.intel.com/public/lustre/latest-feature-release/el7/server/RPMS/x86_64/kernel-devel-3.10.0-327.3.1.el7_lustre.x86_64.rpm
+  - zfs
+
+bootcmd:
+  ## Turn off SELinux
+  - setenforce 0
+runcmd:
+  - yum install -y spl-dkms
+  - dkms install -m spl/0.6.5.7 -k 3.10.0-327.3.1.el7_lustre.x86_64
+  - yum install -y zfs-dkms
+  - dkms install -m zfs/0.6.5.7 -k 3.10.0-327.3.1.el7_lustre.x86_64
+  - sed -i s/SELINUX=enforcing/SELINUX=disabled/ /etc/selinux/config
+  - sysctl -w net.core.netdev_max_backlog=300000
+  - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+  - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+  - sysctl -w net.core.wmem_max=16777216
+  - sysctl -w net.core.rmem_max=16777216
+
+power_state:
+ mode: reboot
+ timeout: 30
+ condition: True
+
+cloud_final_modules:
+ - rightscale_userdata
+ - scripts-per-once
+ - scripts-per-boot
+ - scripts-per-instance
+ - scripts-user
+ - ssh-authkey-fingerprints
+ - keys-to-console
+ - phone-home
+ - final-message
+ - power_state_change

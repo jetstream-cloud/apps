@@ -1,0 +1,36 @@
+#cloud-config
+
+apt_update: true
+package_upgrade: true
+
+runcmd:
+  - sysctl -w net.core.netdev_max_backlog=300000
+  - sysctl -w 'net.ipv4.tcp_wmem=4096 87380 16777216'
+  - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
+  - sysctl -w net.core.wmem_max=16777216
+  - sysctl -w net.core.rmem_max=16777216
+
+packages:
+  - qemu-guest-agent
+  - autoconf
+  - automake
+  - autotools-dev
+  - fail2ban
+  - isc-dhcp-server
+  - libfam0
+  - libjs-jquery
+  - libopts25:amd64
+  - libprotobuf8:amd64
+  - libutempter0
+  - m4
+  - mosh
+  - ntp
+  - python-httplib2
+  - python-ldap
+  - python-pyinotify
+  - python-simplejson
+  - python-software-properties
+  - tcsh
+  - whois
+  - zsh
+  - zsh-common
