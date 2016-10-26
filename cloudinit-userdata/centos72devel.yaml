@@ -9,6 +9,12 @@ yum_repos:
     gpgcheck: true
     gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7"
     name: "Extra Packages for Enterprise Linux 7 - $basearch"
+  dockerrepo:
+    baseurl: "https://yum.dockerproject.org/repo/main/centos/7/"
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://yum.dockerproject.org/gpg
+    name: "Docker Repository"
 
 runcmd:
   - sysctl -w net.core.netdev_max_backlog=300000
@@ -16,6 +22,8 @@ runcmd:
   - sysctl -w 'net.ipv4.tcp_rmem=4096 87380 16777216'
   - sysctl -w net.core.wmem_max=16777216
   - sysctl -w net.core.rmem_max=16777216
+  - [ systemctl, enable, docker.service ]
+  - [ systemctl, start, docker ]
 
 packages:
   - "@Development Tools"
@@ -27,3 +35,6 @@ packages:
   - emacs-nox
   - parted
   - cloud-utils
+  - docker-engine
+
+final_message: "The system is up, after $UPTIME seconds"
